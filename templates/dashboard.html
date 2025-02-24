@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Utility Prediction System - Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <style>
+    /* Custom styling */
+    .nav-tabs-vertical {
+      border: none;
+      margin-top: 10px;
+    }
+    .nav-tabs-vertical .nav-item {
+      margin-bottom: 10px;
+    }
+    .nav-tabs-vertical .card-tab {
+      padding: 30px;
+      width: 90%;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center; /* Center the text */
+      transition: background-color 0.3s;
+      color: white;
+      font-weight: bold;
+      font-size: large;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container-fluid">
+  <div class="my-4"></div>
+  <div class="row">
+    <!-- Left column with vertical tabs -->
+    <div class="col-md-3">
+      <ul class="nav flex-column nav-tabs-vertical" id="cardTabs" role="tablist">
+        <!-- Vertical tabs will be dynamically generated here -->
+      </ul>
+    </div>
+    <!-- Right column with horizontal tabs -->
+    <div class="col-md-9">
+      <div class="tab-content" id="tabContent">
+        <!-- Horizontal tabs content will be dynamically generated here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Papa Parse -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+<!-- Custom JS -->
+<script>
+  // Inside your JavaScript code
+document.addEventListener("DOMContentLoaded", function() {
+    // Retrieve data from sessionStorage
+    var formData = JSON.parse(sessionStorage.getItem("formData"));
+    console.log("Received data:", formData);
+  
+    // Generate content based on received data
+    var cardTabs = document.getElementById("cardTabs");
+    var tabContent = document.getElementById("tabContent");
+    var nodeCount = parseInt(Object.keys(formData).length / 3);
+
+    // Array of predefined colors
+    var colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6c757d', '#6610f2', '#20c997', '#fd7e14', '#e83e8c'];
+  
+    for (var i = 1; i <= nodeCount; i++) {
+      // Generate vertical tab card
+      var cardItem = document.createElement("li");
+      cardItem.className = "nav-item";
+      var cardLink = document.createElement("a");
+      cardLink.className = "nav-link card-tab";
+      cardLink.setAttribute("id", "node" + i + "-tab");
+      cardLink.setAttribute("data-toggle", "tab");
+      cardLink.setAttribute("href", "#node" + i);
+      cardLink.setAttribute("role", "tab");
+      cardLink.setAttribute("aria-controls", "node" + i);
+      cardLink.setAttribute("aria-selected", i === 1 ? "true" : "false");
+      cardLink.innerText = "Node " + i;
+      var colorIndex = i % colors.length; // Choose color based on index
+      cardLink.style.backgroundColor = colors[colorIndex]; // Apply color to the card
+      cardItem.appendChild(cardLink);
+      cardTabs.appendChild(cardItem);
+  
+      // Generate horizontal tabs content
+      var tabPane = document.createElement("div");
+      tabPane.className = "tab-pane fade" + (i === 1 ? " show active" : "");
+      tabPane.setAttribute("id", "node" + i);
+      tabPane.setAttribute("role", "tabpanel");
+      tabPane.setAttribute("aria-labelledby", "node" + i + "-tab");
+
+      // Create tab content container
+      var tabContentDiv = document.createElement("div");
+      tabContentDiv.className = "tab-content";
+
+      // Get enabled configurations for this node
+      var enabledConfigs = [];
+      if (formData["electricity_node_" + i]) {
+        enabledConfigs.push("Electricity");
+      }
+      if (formData["water_node_" + i]) {
+        enabledConfigs.push("Water");
+      }
+      if (formData["gas_node_" + i]) {
+        enabledConfigs.push("Gas");
+      }
+
+      var nodeTabs = document.createElement("ul");
+      nodeTabs.className = "nav nav-tabs";
+      nodeTabs.setAttribute("role", "tablist");
+
+      enabledConfigs.forEach(function(configName, index) {
+        // Generate tab content
+        var tabId = "tab_" + configName.toLowerCase() + "node" + i;
+        var tabLink = document.createElement("li");
+        tabLink.className = "nav-item";
+        var link = document.createElement("a");
+        link.className = "nav-link" + (index === 0 ? " active" : "");
+        link.setAttribute("id", tabId + "-tab");
+        link.setAttribute("data-toggle", "tab");
+        link.setAttribute("href", "#" + tabId);
+        link.setAttribute("role", "tab");
+        link.setAttribute("aria-controls", tabId);
+        link.setAttribute("aria-selected", index === 0 ? "true" : "false");
+        link.innerText = configName;
+
+        tabLink.appendChild(link);
+        nodeTabs.appendChild(tabLink);
+
+        // Generate tab content
+        var tabPaneContent = document.createElement("div");
+        tabPaneContent.className = "tab-pane fade" + (index === 0 ? " show active" : "");
+        tabPaneContent.setAttribute("id", tabId);
+        tabPaneContent.setAttribute("role", "tabpanel");
+        tabPaneContent.setAttribute("aria-labelledby", tabId + "-tab");
+        var paragraph = document.createElement("p");
+        paragraph.innerText = "Node " + i + " " + configName + " Usage Generated and Forecasted Plots";
+        tabPaneContent.appendChild(paragraph);
+
+        // Create canvas for chart
+        var chartCanvas = document.createElement("canvas");
+        tabPaneContent.appendChild(chartCanvas);
+
+        // Append tab content to the tab content container
+        tabContentDiv.appendChild(tabPaneContent);
+
+        // Parse and plot CSV data for this configuration
+        Papa.parse("static/node" + i + "_" + configName.toLowerCase()[0] + ".csv", {
+          download: true,
+          header: true,
+          dynamicTyping: true,
+          complete: function(results) {
+            var chartData = results.data;
+
+            // Extract datetime and usage data
+            var timestamps = chartData.map(function(entry) {
+              return new Date(entry.Datetime);
+            });
+            var usageData = chartData.map(function(entry) {
+              return entry[configName + "_Usage"];
+            });
+
+            var mainData = usageData.slice(0, -30 * 24); // Main dataset without the last 30*24 values
+            var lastThirtyDaysData = usageData.slice(-30 * 24); // Last 30*24 values
+
+            // Calculate the starting index for the last 30*24 values
+            var startIndex = timestamps.length - lastThirtyDaysData.length;
+
+            // Create Chart.js line chart
+            var ctx = chartCanvas.getContext("2d");
+            var mainChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: timestamps.map(date => date.toLocaleDateString()), // Format date to display only the date part
+                datasets: [{
+                  label: configName + " Usage",
+                  data: mainData,
+                  borderColor: 'blue', // Color for the main data
+                  borderWidth: 2,
+                  fill: false
+                }]
+              },
+              options: {
+                scales: {
+                  xAxes: [{
+                    type: 'time',
+                    time: {
+                      parser: 'YYYY-MM-DD', // Parse date in this format
+                      unit: 'month'
+                    }
+                  }]
+                }
+              }
+            });
+
+            // Add the red line for the last 30*24 values to the existing chart
+            mainChart.data.datasets.push({
+              label: configName + " Forecasted Usage (30 days)",
+              data: lastThirtyDaysData,
+              borderColor: 'red', // Color for the last 30*24 data points
+              borderWidth: 2,
+              fill: false
+            });
+
+            // Ensure the red line starts from the correct index
+            mainChart.data.datasets[1].data = new Array(startIndex).fill(null).concat(lastThirtyDaysData);
+            mainChart.update();
+          }
+        });
+      });
+
+      // Append horizontal tabs to the tab pane
+      tabPane.appendChild(nodeTabs);
+
+      // Append tab content container to the tab pane
+      tabPane.appendChild(tabContentDiv);
+
+      // Append tab pane to the tab content
+      tabContent.appendChild(tabPane);
+    }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Node Configurations</title>
+<style>
+@import url(https://fonts.googleapis.com/css?family=Roboto:300);
+
+.configurations {
+  width: 360px;
+  padding: 8% 0 0;
+  margin: auto;
+}
+.configurations .form {
+  position: relative;
+  z-index: 1;
+  background: #FFFFFF;
+  max-width: 360px;
+  margin: 0 auto 20px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2), 0 5px 5px 0 rgba(0, 0, 0, 0.24);
+}
+.configurations .form .checkbox-group {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+.configurations .form input[type="checkbox"] {
+  display: inline-block;
+  margin-right: 5px;
+}
+.configurations .form label {
+  display: inline-block;
+}
+.configurations .form button {
+  font-family: "Roboto", sans-serif;
+  text-transform: uppercase;
+  outline: 0;
+  background: #dbdf63;
+  width: 100%;
+  border: 0;
+  padding: 15px;
+  color: #FFFFFF;
+  font-size: 14px;
+  -webkit-transition: all 0.3s ease;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.configurations .form button:hover,
+.configurations .form button:active,
+.configurations .form button:focus {
+  background: #43A047;
+}
+
+body {
+  background: #dbdf63; /* fallback for old browsers */
+  background: rgb(211, 211, 94);
+  background: linear-gradient(90deg, rgba(211, 211, 94,1) 0%, rgba(211, 211, 94,1) 50%);
+  font-family: "Roboto", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;      
+}
+
+</style>
+</head>
+<body>
+
+<div class="configurations" id="configurations">
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  var numNodes = {{ numNodes }};
+  var configurationsDiv = document.getElementById("configurations");
+
+  // Dynamically generate forms for each node
+  for (var i = 1; i <= numNodes; i++) {
+    var nodeDiv = document.createElement("div");
+    nodeDiv.className = "form";
+    nodeDiv.innerHTML = "<h2>Node " + i + " Configurations</h2>" +
+                        "<form id='form_node_" + i + "'>" +
+                        "<input type='checkbox' name='electricity_node_" + i + "' id='electricity_node_" + i + "'>" +
+                        "<label for='electricity_node_" + i + "'>Electricity</label><br>" +
+                        "<input type='checkbox' name='water_node_" + i + "' id='water_node_" + i + "'>" +
+                        "<label for='water_node_" + i + "'>Water</label><br>" +
+                        "<input type='checkbox' name='gas_node_" + i + "' id='gas_node_" + i + "'>" +
+                        "<label for='gas_node_" + i + "'>Gas</label><br>" +
+                        "</form>";
+
+    configurationsDiv.appendChild(nodeDiv);
+  }
+
+  // Add submit button at the end
+  var submitButton = document.createElement("button");
+  submitButton.type = "button";
+  submitButton.innerText = "Submit";
+  submitButton.style.fontFamily = "Roboto, sans-serif";
+  submitButton.style.textTransform = "uppercase";
+  submitButton.style.outline = "0";
+  submitButton.style.background = "#4CAF50";
+  submitButton.style.width = "100%";
+  submitButton.style.border = "0";
+  submitButton.style.padding = "15px";
+  submitButton.style.color = "#FFFFFF";
+  submitButton.style.fontSize = "14px";
+  submitButton.style.transition = "background 0.3s ease";
+  submitButton.style.cursor = "pointer";
+  submitButton.addEventListener("click", function() {
+    submitAllForms();
+  });
+  configurationsDiv.appendChild(submitButton);
+});
+
+function submitAllForms() {
+  var forms = document.querySelectorAll(".form");
+  var formData = { numNodes: {{numNodes}} };
+
+  // Gather data from all forms
+  forms.forEach(function(form, index) {
+    var inputs = form.querySelectorAll("input[type=checkbox]");
+    inputs.forEach(function(input) {
+      formData[input.name] = input.checked;
+    });
+  });
+
+  // Store data in sessionStorage
+  sessionStorage.setItem("formData", JSON.stringify(formData));
+
+  fetch('/submit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(formData),
+  }).then(response => {
+    if (response.ok) {
+      // Redirect to dashboard.html if submission is successful
+      window.location.href = "{{ url_for('dashboard') }}";
+    } else {
+      // Handle errors
+      console.error('Error:', response.statusText);
+    }
+  }).catch((error) => {
+    console.error('Error:', error);
+  });
+}
+</script>
+
+</body>
+</html>
